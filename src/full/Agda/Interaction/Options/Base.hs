@@ -158,6 +158,8 @@ module Agda.Interaction.Options.Base
     , optSaveMetas
     , optShowIdentitySubstitutions
     , optKeepCoveringClauses
+    , optLargeIndices
+    , optForcedArgumentRecursion
     -- * Non-boolean accessors to 'PragmaOptions'
     , optConfluenceCheck
     , optCubical
@@ -408,6 +410,11 @@ data PragmaOptions = PragmaOptions
   , _optKeepCoveringClauses       :: WithDefault 'False
       -- ^ Do not discard clauses constructed by the coverage checker
       --   (needed for some external backends).
+  , _optLargeIndices              :: WithDefault 'True
+      -- ^ Allow large indices, and large forced arguments in
+      -- constructors.
+  , _optForcedArgumentRecursion   :: WithDefault 'False
+      -- ^ Allow recursion on forced constructor arguments.
   }
   deriving (Show, Eq, Generic)
 
@@ -489,6 +496,8 @@ optAllowExec                 :: PragmaOptions -> Bool
 optSaveMetas                 :: PragmaOptions -> Bool
 optShowIdentitySubstitutions :: PragmaOptions -> Bool
 optKeepCoveringClauses       :: PragmaOptions -> Bool
+optLargeIndices              :: PragmaOptions -> Bool
+optForcedArgumentRecursion   :: PragmaOptions -> Bool
 
 optShowImplicit              = collapseDefault . _optShowImplicit
 optShowIrrelevant            = collapseDefault . _optShowIrrelevant
@@ -547,6 +556,8 @@ optAllowExec                 = collapseDefault . _optAllowExec
 optSaveMetas                 = collapseDefault . _optSaveMetas
 optShowIdentitySubstitutions = collapseDefault . _optShowIdentitySubstitutions
 optKeepCoveringClauses       = collapseDefault . _optKeepCoveringClauses
+optLargeIndices              = collapseDefault . _optLargeIndices
+optForcedArgumentRecursion   = collapseDefault . _optForcedArgumentRecursion
 
 -- Collapse defaults (non-Bool)
 
@@ -773,6 +784,12 @@ lensOptShowIdentitySubstitutions f o = f (_optShowIdentitySubstitutions o) <&> \
 lensOptKeepCoveringClauses :: Lens' PragmaOptions _
 lensOptKeepCoveringClauses f o = f (_optKeepCoveringClauses o) <&> \ i -> o{ _optKeepCoveringClauses = i }
 
+lensOptLargeIndices :: Lens' PragmaOptions _
+lensOptLargeIndices f o = f (_optLargeIndices o) <&> \ i -> o{ _optLargeIndices = i }
+
+lensOptForcedArgumentRecursion :: Lens' PragmaOptions _
+lensOptForcedArgumentRecursion f o = f (_optForcedArgumentRecursion o) <&> \ i -> o{ _optForcedArgumentRecursion = i }
+
 -- Lenses for particular warnings
 
 lensOptExactSplit :: Lens' PragmaOptions Bool
@@ -882,6 +899,8 @@ defaultPragmaOptions = PragmaOptions
   , _optSaveMetas                 = Default
   , _optShowIdentitySubstitutions = Default
   , _optKeepCoveringClauses       = Default
+  , _optForcedArgumentRecursion   = Default
+  , _optLargeIndices              = Default
   }
 
 -- | The options parse monad 'OptM' collects warnings that are not discarded
@@ -1020,6 +1039,9 @@ unsafePragmaOptions opts =
   [ "--cumulativity"                    | optCumulativity opts                              ] ++
   [ "--allow-exec"                      | optAllowExec opts                                 ] ++
   [ "--no-load-primitives"              | not $ optLoadPrimitives opts                      ] ++
+  [ "--without-K and --large-indices"   | optWithoutK opts, optLargeIndices opts            ] ++
+  [ "--large-indices and --forced-argument-recursion"
+  | optLargeIndices opts, optForcedArgumentRecursion opts ] ++
   []
 
 -- | This function returns 'True' if the file should be rechecked.
@@ -1259,9 +1281,11 @@ withKFlag =
 
 withoutKFlag :: Flag PragmaOptions
 withoutKFlag o = return $ o
-  { _optWithoutK      = Value True
-  , _optFlatSplit     = setDefault False (_optFlatSplit o)
-  , _optErasedMatches = setDefault False (_optErasedMatches o)
+  { _optWithoutK                = Value True
+  , _optFlatSplit               = setDefault False $ _optFlatSplit o
+  , _optErasedMatches           = setDefault False $ _optErasedMatches o
+  , _optLargeIndices            = setDefault False $ _optLargeIndices o
+  , _optForcedArgumentRecursion = setDefault True  $ _optForcedArgumentRecursion o
   }
 
 firstOrderFlag :: Flag PragmaOptions
@@ -1270,10 +1294,12 @@ firstOrderFlag o = return $ o { _optFirstOrder = Value True }
 cubicalCompatibleFlag :: Flag PragmaOptions
 cubicalCompatibleFlag o =
   return $ o
-  { _optCubicalCompatible = Value True
-  , _optWithoutK          = setDefault True  $ _optWithoutK o
-  , _optFlatSplit         = setDefault False $ _optFlatSplit o
-  , _optErasedMatches     = setDefault False $ _optErasedMatches o
+  { _optCubicalCompatible       = Value True
+  , _optWithoutK                = setDefault True  $ _optWithoutK o
+  , _optFlatSplit               = setDefault False $ _optFlatSplit o
+  , _optErasedMatches           = setDefault False $ _optErasedMatches o
+  , _optLargeIndices            = setDefault False $ _optLargeIndices o
+  , _optForcedArgumentRecursion = setDefault True  $ _optForcedArgumentRecursion o
   }
 
 cubicalFlag
@@ -1281,12 +1307,14 @@ cubicalFlag
   -> Flag PragmaOptions
 cubicalFlag variant o =
   return $ o
-  { _optCubical           = Just variant
-  , _optCubicalCompatible = setDefault True  $ _optCubicalCompatible o
-  , _optWithoutK          = setDefault True  $ _optWithoutK o
-  , _optTwoLevel          = setDefault True  $ _optTwoLevel o
-  , _optFlatSplit         = setDefault False $ _optFlatSplit o
-  , _optErasedMatches     = setDefault False $ _optErasedMatches o
+  { _optCubical                 = Just variant
+  , _optCubicalCompatible       = setDefault True  $ _optCubicalCompatible o
+  , _optWithoutK                = setDefault True  $ _optWithoutK o
+  , _optTwoLevel                = setDefault True  $ _optTwoLevel o
+  , _optFlatSplit               = setDefault False $ _optFlatSplit o
+  , _optErasedMatches           = setDefault False $ _optErasedMatches o
+  , _optLargeIndices            = setDefault False $ _optLargeIndices o
+  , _optForcedArgumentRecursion = setDefault True  $ _optForcedArgumentRecursion o
   }
 
 instanceDepthFlag :: String -> Flag PragmaOptions
@@ -1737,6 +1765,12 @@ pragmaOptions = concat
   , pragmaFlag      "keep-covering-clauses" lensOptKeepCoveringClauses
                     "do not discard covering clauses" "(required for some external backends)"
                     $ Just "discard covering clauses"
+  , pragmaFlag      "large-indices" lensOptLargeIndices
+                    "allow constructors with large indices" ""
+                    $ Just "always check that constructor arguments live in universes compatible with that of the datatype"
+  , pragmaFlag      "forced-argument-recursion" lensOptForcedArgumentRecursion
+                    "allow recursion on forced constructor arguments" ""
+                    Nothing
   ]
 
 pragmaOptionDefault :: KnownBool b => (PragmaOptions -> WithDefault b) -> Bool -> String
