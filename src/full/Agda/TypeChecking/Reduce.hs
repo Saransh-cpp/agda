@@ -560,7 +560,7 @@ slowReduceTerm v = do
 --    and seems to save 2% sec on the standard library
 --      MetaV x args -> notBlocked . MetaV x <$> reduce' args
       MetaV x es -> iapp es
-      Def f es   -> flip reduceIApply es $ 
+      Def f es   -> flip reduceIApply es $
       reduceB' (Def f []) f es
       Con c ci es -> do
           -- Constructors can reduce' when they come from an
