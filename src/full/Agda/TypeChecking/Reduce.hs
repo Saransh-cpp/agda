@@ -560,8 +560,7 @@ slowReduceTerm v = do
 --    and seems to save 2% sec on the standard library
 --      MetaV x args -> notBlocked . MetaV x <$> reduce' args
       MetaV x es -> iapp es
-      Def f es   -> flip reduceIApply es $
-      reduceB' (Def f []) f es
+      Def f es   -> flip reduceIApply es $ unfoldDefinitionE reduceB' (Def f []) f es
       Con c ci es -> do
           -- Constructors can reduce' when they come from an
           -- instantiated module.
@@ -844,11 +843,10 @@ unfoldInlined v = do
             , "irr         = " ++ prettyShow irr
             , "funInline   = " ++ prettyShow (def ^. funInline)
             , "funCompiled = " ++ prettyShow (funCompiled def)
-            , "funDelayed  = " ++ show (funDelayed def)
             ]
         _ -> pure ()
       case def of   -- Only for simple definitions with no pattern matching (TODO: maybe copatterns?)
-        Function{ funCompiled = Just Done{}, funDelayed = NotDelayed }
+        Function{ funCompiled = Just Done{} }
           | def ^. funInline , not irr -> do
               reportSLn "tc.inline" 70 $ "asking to inline " ++ prettyShow f
               liftReduce $
