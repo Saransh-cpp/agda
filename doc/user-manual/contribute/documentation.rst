@@ -46,7 +46,7 @@ Type-checking code examples
 
 You can include code examples in your documentation.
 
-If your give the documentation file the extension ``.lagda.rst``, Agda will
+If you give the documentation file the extension ``.lagda.rst``, Agda will
 recognise it as an Agda file and type-check it.
 
 .. tip::
@@ -171,7 +171,7 @@ Invisible, checked code examples
 This is code that is not shown to the reader, but which is used to typecheck
 the code that is actually displayed.
 
-This might be definitions that are well known enough that do not need to be
+These might be definitions that are well known enough that do not need to be
 shown again.
 
 .. code-block:: rst
